@@ -21,19 +21,46 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [model, setModel] = useState<FinanceModel>(storage.getEmptyModel());
 
-  // Check for existing session on mount
+  // Check for existing session on mount and handle email confirmation
   useEffect(() => {
     let isMounted = true;
     let hasLoadedInitialData = false;
 
-    auth.getCurrentUser().then((currentUser) => {
-      if (!isMounted) return;
-      setUser(currentUser);
-      setLoading(false);
-      if (currentUser) {
-        hasLoadedInitialData = true;
-        loadUserData(currentUser.id);
+    // Handle email confirmation redirect from Supabase
+    // Supabase adds tokens to the URL hash after email confirmation
+    const handleEmailConfirmation = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
+      
+      if (type === 'signup' && accessToken) {
+        // User confirmed their email, get the session
+        const currentUser = await auth.getCurrentUser();
+        if (currentUser) {
+          setUser(currentUser);
+          setLoading(false);
+          hasLoadedInitialData = true;
+          loadUserData(currentUser.id);
+          // Clean up the URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
       }
+    };
+
+    // Check for email confirmation first
+    handleEmailConfirmation().then(() => {
+      // Then check for existing session
+      auth.getCurrentUser().then((currentUser) => {
+        if (!isMounted) return;
+        if (!user) { // Only set if we didn't already set it from email confirmation
+          setUser(currentUser);
+          setLoading(false);
+          if (currentUser) {
+            hasLoadedInitialData = true;
+            loadUserData(currentUser.id);
+          }
+        }
+      });
     });
 
     // Track previous user ID to detect changes

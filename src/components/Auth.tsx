@@ -9,6 +9,7 @@ export function Auth() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +46,22 @@ export function Auth() {
           }, 0);
         }
         return;
+      }
+
+      // If sign up was successful but requires email confirmation
+      // Check if we got a session (user is already confirmed) or not (needs confirmation)
+      if (isSignUp && result.user) {
+        // Check if we're in production and if email confirmation is required
+        // In Supabase, if email confirmation is enabled, signUp returns user but no session
+        const isProduction = !(import.meta as any).env?.DEV;
+        if (isProduction) {
+          // Check if we need to wait for email confirmation
+          // We'll detect this by checking if the auth state changes
+          // For now, show the email confirmation message
+          setEmailSent(true);
+          setLoading(false);
+          return;
+        }
       }
 
       // If successful, the auth state change listener will pick it up automatically
@@ -88,6 +105,38 @@ export function Auth() {
       setLoading(false);
     }
   };
+
+  // Show email confirmation message
+  if (emailSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50/30 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md text-center">
+          <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">📧</span>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Check Your Email</h1>
+          <p className="text-gray-600 mb-6">
+            We've sent a confirmation link to <strong>{email}</strong>
+          </p>
+          <p className="text-sm text-gray-500 mb-6">
+            Click the link in the email to verify your account and complete sign up.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setEmailSent(false);
+              setEmail('');
+              setPassword('');
+              setConfirmPassword('');
+            }}
+            className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all"
+          >
+            Back to Sign Up
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50/30 flex items-center justify-center p-4">

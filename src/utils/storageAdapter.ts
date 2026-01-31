@@ -39,7 +39,15 @@ export const auth = {
       return { user: { id: profile.id, email, name: profile.name }, error: null };
     } else {
       // In prod, try to sign up - Supabase will handle duplicate email check
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      // Set redirect URL for email confirmation
+      const redirectUrl = `${window.location.origin}/PersonalFinanceTracker/`;
+      const { data, error } = await supabase.auth.signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      });
       
       if (error) {
         // Check if it's a duplicate email error
@@ -49,7 +57,14 @@ export const auth = {
         return { user: null, error: error.message };
       }
       
-      if (data.user) {
+      // If email confirmation is required, return user but indicate email was sent
+      if (data.user && !data.session) {
+        // Email confirmation required - user needs to check email
+        return { user: { id: data.user.id, email: data.user.email || null }, error: null };
+      }
+      
+      if (data.user && data.session) {
+        // Email confirmation not required or already confirmed
         // Initialize empty finance data
         await supabaseStorage.saveModelToSupabase(data.user.id, profileStorage.getEmptyModel());
         return { user: { id: data.user.id, email: data.user.email || null }, error: null };
