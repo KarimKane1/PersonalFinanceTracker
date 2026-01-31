@@ -14,6 +14,7 @@ import { PlanningPage } from './pages/PlanningPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { auth, storage } from './utils/storageAdapter';
 import type { AuthUser } from './utils/storageAdapter';
+import { supabase } from './utils/supabase';
 
 function App() {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -33,34 +34,49 @@ function App() {
       const accessToken = hashParams.get('access_token');
       const type = hashParams.get('type');
       
-      if (type === 'signup' && accessToken) {
-        // User confirmed their email, get the session
-        const currentUser = await auth.getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-          setLoading(false);
-          hasLoadedInitialData = true;
-          loadUserData(currentUser.id);
-          // Clean up the URL
-          window.history.replaceState({}, document.title, window.location.pathname);
+      if ((type === 'signup' || type === 'recovery') && accessToken) {
+        // User confirmed their email, exchange the token for a session
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          if (error) {
+            console.error('Error getting session after email confirmation:', error);
+            return false;
+          }
+          
+          if (data.session && isMounted) {
+            // Session created, get the user
+            const currentUser = await auth.getCurrentUser();
+            if (currentUser) {
+              setUser(currentUser);
+              setLoading(false);
+              hasLoadedInitialData = true;
+              loadUserData(currentUser.id);
+              // Clean up the URL
+              window.history.replaceState({}, document.title, window.location.pathname);
+              return true; // Indicate we handled email confirmation
+            }
+          }
+        } catch (err) {
+          console.error('Error handling email confirmation:', err);
         }
       }
+      return false;
     };
 
-    // Check for email confirmation first
-    handleEmailConfirmation().then(() => {
-      // Then check for existing session
-      auth.getCurrentUser().then((currentUser) => {
-        if (!isMounted) return;
-        if (!user) { // Only set if we didn't already set it from email confirmation
+    // Check for email confirmation first, then check for existing session
+    handleEmailConfirmation().then((emailConfirmed) => {
+      if (!emailConfirmed && isMounted) {
+        // No email confirmation, check for existing session
+        auth.getCurrentUser().then((currentUser) => {
+          if (!isMounted) return;
           setUser(currentUser);
           setLoading(false);
           if (currentUser) {
             hasLoadedInitialData = true;
             loadUserData(currentUser.id);
           }
-        }
-      });
+        });
+      }
     });
 
     // Track previous user ID to detect changes
