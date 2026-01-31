@@ -150,6 +150,11 @@ export function loadModelForProfile(profileId: string): FinanceModel | null {
       }));
     }
     
+    // Migrate old data: add debtItems if missing
+    if (!model.debtItems) {
+      model.debtItems = [];
+    }
+    
     return model;
   } catch (error) {
     console.error('Error loading model for profile:', error);
@@ -197,6 +202,7 @@ export function getSampleModel(): FinanceModel {
       { id: '5', name: 'Misc.', monthlyAmount: 400 },
       { id: '6', name: 'Rent', monthlyAmount: 0 },
     ],
+    debtItems: [],
     allocationItems: [
       { id: '1', name: 'Robinhood', monthlyAmount: 937 },
       { id: '2', name: 'Amex HYSA', monthlyAmount: 100 },
@@ -231,6 +237,7 @@ export function getEmptyModel(): FinanceModel {
     },
     incomeItems: [],
     expenseItems: [],
+    debtItems: [],
     allocationItems: [],
     balanceItems: [
       { id: 'default-checking', name: 'Checking', amount: 0, apy: 0, monthlyAllocation: 0 },

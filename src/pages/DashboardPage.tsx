@@ -47,31 +47,171 @@ export function DashboardPage({
   // Calculate simple monthly projections (without account breakdown)
   const simpleProjections = useMemo(() => {
     const projections = [];
-    let currentBalance = startingNetWorth;
-    const monthlySavings = availablePostExpenses;
+    
+    // Initialize account and debt balances
+    const accountBalances: { [key: string]: number } = {};
+    model.balanceItems.forEach(account => {
+      accountBalances[account.id] = account.amount;
+    });
+    
+    const debtBalances: { [key: string]: number } = {};
+    model.debtItems.forEach(debt => {
+      debtBalances[debt.id] = debt.currentBalance;
+    });
+    
+    const monthlyCashFlow = availablePostExpenses; // Can be negative if expenses > income
     
     for (let month = 0; month < projectionMonths; month++) {
-      // Add monthly savings
-      currentBalance += monthlySavings;
+      // Process accounts: handle cash flow first
+      let totalAccountInterest = 0;
       
-      // Add interest from accounts
-      const monthlyInterest = model.balanceItems.reduce((sum, account) => {
-        const accountBalance = account.amount + (account.monthlyAllocation || 0) * (month + 1);
-        return sum + (accountBalance * account.apy / 12);
-      }, 0);
+      // Handle monthly cash flow (income - expenses)
+      if (monthlyCashFlow >= 0) {
+        // Positive cash flow: add to Checking account
+        const checkingAccount = model.balanceItems.find(acc => 
+          acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
+        );
+        if (checkingAccount) {
+          accountBalances[checkingAccount.id] = (accountBalances[checkingAccount.id] || 0) + monthlyCashFlow;
+        }
+      } else {
+        // Negative cash flow: cover from accounts (starting with Checking)
+        let remainingShortfall = Math.abs(monthlyCashFlow);
+        const checkingAccount = model.balanceItems.find(acc => 
+          acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
+        );
+        
+        if (checkingAccount && accountBalances[checkingAccount.id] > 0) {
+          const amountToCover = Math.min(remainingShortfall, accountBalances[checkingAccount.id]);
+          accountBalances[checkingAccount.id] -= amountToCover;
+          remainingShortfall -= amountToCover;
+        }
+        
+        // If still short, cover from other accounts
+        if (remainingShortfall > 0) {
+          for (const account of model.balanceItems) {
+            if (remainingShortfall <= 0) break;
+            if (account.id === checkingAccount?.id) continue;
+            
+            if (accountBalances[account.id] > 0) {
+              const amountToCover = Math.min(remainingShortfall, accountBalances[account.id]);
+              accountBalances[account.id] -= amountToCover;
+              remainingShortfall -= amountToCover;
+            }
+          }
+        }
+        
+        // If still short after using all savings, it increases debt
+        if (remainingShortfall > 0 && model.debtItems.length > 0) {
+          const firstDebt = model.debtItems[0];
+          debtBalances[firstDebt.id] += remainingShortfall;
+        }
+      }
       
-      currentBalance += monthlyInterest;
+      // Calculate available money after handling cash flow
+      let availableMoney = Object.values(accountBalances).reduce((sum, bal) => sum + bal, 0);
+      
+      // Process debts: add interest first (debts always grow), then process payments individually
+      let totalDebtInterest = 0;
+      const checkingAccount = model.balanceItems.find(acc => 
+        acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
+      );
+      
+      model.debtItems.forEach(debt => {
+        // Skip if debt is already paid off
+        if (debtBalances[debt.id] <= 0) {
+          return;
+        }
+        
+        // First, add interest (debt grows)
+        const monthlyInterest = debtBalances[debt.id] * debt.interestRate / 12;
+        debtBalances[debt.id] += monthlyInterest;
+        totalDebtInterest += monthlyInterest;
+        
+        // Then, check if user wants to pay this debt and if there's enough money
+        const paymentAmount = debt.monthlyAllocation || 0;
+        if (paymentAmount > 0 && availableMoney >= paymentAmount) {
+          // User entered a payment AND there's enough money for it
+          const newBalance = debtBalances[debt.id] - paymentAmount;
+          debtBalances[debt.id] = Math.max(0, newBalance);
+          availableMoney -= paymentAmount; // Deduct from available money
+          
+          // Actually deduct the payment from account balances (starting with Checking)
+          let remainingPayment = paymentAmount;
+          
+          if (checkingAccount && accountBalances[checkingAccount.id] > 0) {
+            const amountToDeduct = Math.min(remainingPayment, accountBalances[checkingAccount.id]);
+            accountBalances[checkingAccount.id] -= amountToDeduct;
+            remainingPayment -= amountToDeduct;
+          }
+          
+          // If still need to deduct, take from other accounts
+          if (remainingPayment > 0) {
+            for (const account of model.balanceItems) {
+              if (remainingPayment <= 0) break;
+              if (account.id === checkingAccount?.id) continue;
+              
+              if (accountBalances[account.id] > 0) {
+                const amountToDeduct = Math.min(remainingPayment, accountBalances[account.id]);
+                accountBalances[account.id] -= amountToDeduct;
+                remainingPayment -= amountToDeduct;
+              }
+            }
+          }
+          
+          // If debt is now paid off (balance = 0) and there was leftover payment, add to Checking
+          if (debtBalances[debt.id] === 0 && newBalance < 0 && checkingAccount) {
+            const excessPayment = Math.abs(newBalance);
+            accountBalances[checkingAccount.id] = (accountBalances[checkingAccount.id] || 0) + excessPayment;
+            availableMoney += excessPayment; // Add back to available since it goes to Checking
+          }
+        }
+        // If no payment entered OR not enough money, debt just grows (already done above)
+      });
+      
+      // Handle payments allocated to debts that are already paid off - redirect to Checking
+      model.debtItems.forEach(debt => {
+        if (debtBalances[debt.id] <= 0) {
+          const paymentAmount = debt.monthlyAllocation || 0;
+          if (paymentAmount > 0 && availableMoney >= paymentAmount) {
+            // Debt is paid off, redirect payment to Checking
+            if (checkingAccount) {
+              accountBalances[checkingAccount.id] = (accountBalances[checkingAccount.id] || 0) + paymentAmount;
+              availableMoney -= paymentAmount;
+            }
+          }
+        }
+      });
+      
+      // Process account allocations with remaining available money
+      model.balanceItems.forEach(account => {
+        const requestedAllocation = account.monthlyAllocation || 0;
+        // Only allocate if there's enough money for this specific allocation
+        const actualAllocation = availableMoney >= requestedAllocation ? requestedAllocation : 0;
+        accountBalances[account.id] += actualAllocation;
+        availableMoney -= actualAllocation; // Deduct from available money
+        
+        // Calculate interest on current balance
+        const monthlyInterest = accountBalances[account.id] * account.apy / 12;
+        accountBalances[account.id] += monthlyInterest;
+        totalAccountInterest += monthlyInterest;
+      });
+      
+      // Calculate net worth: total assets minus total debts
+      const totalAssets = Object.values(accountBalances).reduce((sum, bal) => sum + bal, 0);
+      const totalDebts = Object.values(debtBalances).reduce((sum, bal) => sum + bal, 0);
+      const netWorth = totalAssets - totalDebts;
       
       projections.push({
         month: month + 1,
-        netWorth: Math.round(currentBalance),
-        savings: Math.round(monthlySavings * (month + 1)),
-        interest: Math.round(monthlyInterest),
+        netWorth: Math.round(netWorth),
+        savings: Math.round(monthlyCashFlow * (month + 1)), // Cumulative cash flow
+        interest: Math.round(totalAccountInterest - totalDebtInterest), // Net interest (account interest minus debt interest)
       });
     }
     
     return projections;
-  }, [startingNetWorth, availablePostExpenses, model.balanceItems, projectionMonths]);
+  }, [startingNetWorth, availablePostExpenses, model.balanceItems, model.debtItems, projectionMonths]);
 
   // Calculate monthly projections with account breakdown (for detailed view)
   const { monthlyProjections, accountProjections } = useMemo(() => {
@@ -81,20 +221,28 @@ export function DashboardPage({
 
     const projections: any[] = [];
     const accountProjs: { [key: string]: any[] } = {};
+    const debtProjs: { [key: string]: any[] } = {};
     
-    // Initialize account tracking
+    // Initialize account and debt tracking
     model.balanceItems.forEach(account => {
       accountProjs[account.id] = [];
     });
+    model.debtItems.forEach(debt => {
+      debtProjs[debt.id] = [];
+    });
 
-    // Calculate starting balances per account
+    // Calculate starting balances per account and debt
     const accountBalances: { [key: string]: number } = {};
     model.balanceItems.forEach(account => {
       accountBalances[account.id] = account.amount;
     });
+    
+    const debtBalances: { [key: string]: number } = {};
+    model.debtItems.forEach(debt => {
+      debtBalances[debt.id] = debt.currentBalance;
+    });
 
-    let totalNetWorth = startingNetWorth;
-    const monthlySavings = availablePostExpenses;
+    const monthlyCashFlow = availablePostExpenses; // Can be negative if expenses > income
     
     for (let month = 0; month < projectionMonths; month++) {
       const monthData: any = {
@@ -104,42 +252,185 @@ export function DashboardPage({
         interest: 0,
       };
 
-      // Calculate each account's contribution
-      let totalInterest = 0;
-      model.balanceItems.forEach(account => {
-        const allocation = account.monthlyAllocation || 0;
+      // Handle monthly cash flow (income - expenses)
+      if (monthlyCashFlow >= 0) {
+        // Positive cash flow: add to Checking account
+        const checkingAccount = model.balanceItems.find(acc => 
+          acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
+        );
+        if (checkingAccount) {
+          accountBalances[checkingAccount.id] = (accountBalances[checkingAccount.id] || 0) + monthlyCashFlow;
+        }
+      } else {
+        // Negative cash flow: cover from accounts (starting with Checking)
+        let remainingShortfall = Math.abs(monthlyCashFlow);
+        const checkingAccount = model.balanceItems.find(acc => 
+          acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
+        );
         
-        // Add monthly allocation to account balance
-        accountBalances[account.id] += allocation;
+        if (checkingAccount && accountBalances[checkingAccount.id] > 0) {
+          const amountToCover = Math.min(remainingShortfall, accountBalances[checkingAccount.id]);
+          accountBalances[checkingAccount.id] -= amountToCover;
+          remainingShortfall -= amountToCover;
+        }
+        
+        // If still short, cover from other accounts
+        if (remainingShortfall > 0) {
+          for (const account of model.balanceItems) {
+            if (remainingShortfall <= 0) break;
+            if (account.id === checkingAccount?.id) continue;
+            
+            if (accountBalances[account.id] > 0) {
+              const amountToCover = Math.min(remainingShortfall, accountBalances[account.id]);
+              accountBalances[account.id] -= amountToCover;
+              remainingShortfall -= amountToCover;
+            }
+          }
+        }
+        
+        // If still short after using all savings, it increases debt
+        if (remainingShortfall > 0 && model.debtItems.length > 0) {
+          const firstDebt = model.debtItems[0];
+          debtBalances[firstDebt.id] += remainingShortfall;
+        }
+      }
+
+      // Calculate available money after handling cash flow
+      let availableMoney = Object.values(accountBalances).reduce((sum, bal) => sum + bal, 0);
+
+      // Process debts: add interest first (debts always grow), then process payments individually
+      let totalDebtInterest = 0;
+      const checkingAccount = model.balanceItems.find(acc => 
+        acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
+      );
+      
+      model.debtItems.forEach(debt => {
+        // Skip if debt is already paid off
+        if (debtBalances[debt.id] <= 0) {
+          // Store debt data (balance is 0)
+          debtProjs[debt.id].push({
+            month: month + 1,
+            balance: 0,
+            interest: 0,
+            allocation: 0,
+          });
+          monthData[`${debt.name}_debt`] = 0;
+          return;
+        }
+        
+        // First, add interest (debt grows)
+        const monthlyInterest = debtBalances[debt.id] * debt.interestRate / 12;
+        debtBalances[debt.id] += monthlyInterest;
+        totalDebtInterest += monthlyInterest;
+        
+        // Then, check if user wants to pay this debt and if there's enough money
+        const paymentAmount = debt.monthlyAllocation || 0;
+        let actualPayment = 0;
+        if (paymentAmount > 0 && availableMoney >= paymentAmount) {
+          // User entered a payment AND there's enough money for it
+          const newBalance = debtBalances[debt.id] - paymentAmount;
+          debtBalances[debt.id] = Math.max(0, newBalance);
+          actualPayment = paymentAmount;
+          availableMoney -= paymentAmount; // Deduct from available money
+          
+          // Actually deduct the payment from account balances (starting with Checking)
+          let remainingPayment = paymentAmount;
+          
+          if (checkingAccount && accountBalances[checkingAccount.id] > 0) {
+            const amountToDeduct = Math.min(remainingPayment, accountBalances[checkingAccount.id]);
+            accountBalances[checkingAccount.id] -= amountToDeduct;
+            remainingPayment -= amountToDeduct;
+          }
+          
+          // If still need to deduct, take from other accounts
+          if (remainingPayment > 0) {
+            for (const account of model.balanceItems) {
+              if (remainingPayment <= 0) break;
+              if (account.id === checkingAccount?.id) continue;
+              
+              if (accountBalances[account.id] > 0) {
+                const amountToDeduct = Math.min(remainingPayment, accountBalances[account.id]);
+                accountBalances[account.id] -= amountToDeduct;
+                remainingPayment -= amountToDeduct;
+              }
+            }
+          }
+          
+          // If debt is now paid off (balance = 0) and there was leftover payment, add to Checking
+          if (debtBalances[debt.id] === 0 && newBalance < 0 && checkingAccount) {
+            const excessPayment = Math.abs(newBalance);
+            accountBalances[checkingAccount.id] = (accountBalances[checkingAccount.id] || 0) + excessPayment;
+            availableMoney += excessPayment; // Add back to available since it goes to Checking
+          }
+        }
+        // If no payment entered OR not enough money, debt just grows (already done above)
+        
+        // Store debt data
+        debtProjs[debt.id].push({
+          month: month + 1,
+          balance: Math.round(debtBalances[debt.id]),
+          interest: Math.round(monthlyInterest),
+          allocation: actualPayment,
+        });
+        
+        // Add to month data
+        monthData[`${debt.name}_debt`] = Math.round(debtBalances[debt.id]);
+      });
+      
+      // Handle payments allocated to debts that are already paid off - redirect to Checking
+      model.debtItems.forEach(debt => {
+        if (debtBalances[debt.id] <= 0) {
+          const paymentAmount = debt.monthlyAllocation || 0;
+          if (paymentAmount > 0 && availableMoney >= paymentAmount) {
+            // Debt is paid off, redirect payment to Checking
+            if (checkingAccount) {
+              accountBalances[checkingAccount.id] = (accountBalances[checkingAccount.id] || 0) + paymentAmount;
+              availableMoney -= paymentAmount;
+            }
+          }
+        }
+      });
+
+      // Calculate each account's contribution
+      let totalAccountInterest = 0;
+      model.balanceItems.forEach(account => {
+        const requestedAllocation = account.monthlyAllocation || 0;
+        // Only allocate if there's enough money for this specific allocation
+        const actualAllocation = availableMoney >= requestedAllocation ? requestedAllocation : 0;
+        accountBalances[account.id] += actualAllocation;
+        availableMoney -= actualAllocation; // Deduct from available money
         
         // Calculate interest for this account
         const monthlyInterest = accountBalances[account.id] * account.apy / 12;
         accountBalances[account.id] += monthlyInterest;
-        totalInterest += monthlyInterest;
+        totalAccountInterest += monthlyInterest;
         
         // Store account data
         accountProjs[account.id].push({
           month: month + 1,
           balance: Math.round(accountBalances[account.id]),
           interest: Math.round(monthlyInterest),
-          allocation: allocation,
+          allocation: actualAllocation,
         });
         
         // Add to month data
         monthData[`${account.name}_balance`] = Math.round(accountBalances[account.id]);
       });
 
-      // Calculate total net worth
-      totalNetWorth = Object.values(accountBalances).reduce((sum, bal) => sum + bal, 0);
-      monthData.netWorth = Math.round(totalNetWorth);
-      monthData.savings = Math.round(monthlySavings * (month + 1));
-      monthData.interest = Math.round(totalInterest);
+      // Calculate total net worth: assets minus debts
+      const totalAssets = Object.values(accountBalances).reduce((sum, bal) => sum + bal, 0);
+      const totalDebts = Object.values(debtBalances).reduce((sum, bal) => sum + bal, 0);
+      const netWorth = totalAssets - totalDebts;
+      
+      monthData.netWorth = Math.round(netWorth);
+      monthData.savings = Math.round(monthlyCashFlow * (month + 1)); // Cumulative cash flow
+      monthData.interest = Math.round(totalAccountInterest - totalDebtInterest); // Net interest
 
       projections.push(monthData);
     }
     
     return { monthlyProjections: projections, accountProjections: accountProjs };
-  }, [startingNetWorth, availablePostExpenses, model.balanceItems, projectionMonths, showAccountDetails, simpleProjections]);
+  }, [startingNetWorth, availablePostExpenses, model.balanceItems, model.debtItems, projectionMonths, showAccountDetails, simpleProjections]);
 
   // Expense breakdown data
   const expenseData = useMemo(() => {
@@ -165,18 +456,111 @@ export function DashboardPage({
     return data;
   }, [model, computeNetMonthly]);
 
-  // Account allocation breakdown
+  // Calculate allocation surplus/deficit
+  const allocationSurplusDeficit = availablePostExpenses - totalAllocations;
+
+  // Account allocation breakdown (include Checking if there's unallocated surplus)
   const allocationData = useMemo(() => {
-    return model.balanceItems
-      .filter(account => (account.monthlyAllocation || 0) > 0)
-      .map(account => ({
-        name: account.name,
-        value: account.monthlyAllocation || 0,
-        balance: account.amount,
-        apy: account.apy * 100,
-      }))
+    const checkingAccount = model.balanceItems.find(acc => 
+      acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
+    );
+    
+    const allocations = model.balanceItems
+      .filter(account => {
+        // Include if they have an explicit allocation OR if it's Checking with surplus
+        const hasAllocation = (account.monthlyAllocation || 0) > 0;
+        const isCheckingWithSurplus = account.id === checkingAccount?.id && allocationSurplusDeficit > 0;
+        return hasAllocation || isCheckingWithSurplus;
+      })
+      .map(account => {
+        const explicitAllocation = account.monthlyAllocation || 0;
+        const isChecking = account.id === checkingAccount?.id;
+        const surplusAllocation = isChecking && allocationSurplusDeficit > 0 ? allocationSurplusDeficit : 0;
+        const totalAllocation = explicitAllocation + surplusAllocation;
+        
+        return {
+          name: account.name,
+          value: totalAllocation,
+          balance: account.amount,
+          apy: account.apy * 100,
+        };
+      })
+      .filter(item => item.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [model.balanceItems]);
+    
+    return allocations;
+  }, [model.balanceItems, allocationSurplusDeficit]);
+
+  // Debt information with payoff calculations
+  const debtInfo = useMemo(() => {
+    return model.debtItems.map(debt => {
+      const monthlyPayment = debt.monthlyAllocation || 0;
+      const monthlyInterest = debt.currentBalance * debt.interestRate / 12;
+      const principalPayment = Math.max(0, monthlyPayment - monthlyInterest);
+      
+      // Calculate estimated months to payoff
+      // Using simplified calculation: if payment > interest, calculate months
+      let estimatedMonths: number | null = null;
+      if (monthlyPayment > monthlyInterest && debt.interestRate > 0) {
+        // Using amortization formula approximation
+        // M = P * [r(1+r)^n] / [(1+r)^n - 1]
+        // Solving for n (months) when we know M (payment), P (principal), r (monthly rate)
+        const monthlyRate = debt.interestRate / 12;
+        if (monthlyRate > 0 && monthlyPayment > monthlyInterest) {
+          // Approximate: n ≈ -log(1 - (P*r)/M) / log(1+r)
+          const balance = debt.currentBalance;
+          const payment = monthlyPayment;
+          const rate = monthlyRate;
+          
+          if (payment > balance * rate) {
+            // Use iterative approach for more accuracy
+            let remainingBalance = balance;
+            let months = 0;
+            while (remainingBalance > 0.01 && months < 1000) {
+              remainingBalance = remainingBalance * (1 + rate) - payment;
+              months++;
+              if (remainingBalance >= balance) {
+                // Payment is too small, will never pay off
+                months = Infinity;
+                break;
+              }
+            }
+            estimatedMonths = months < 1000 ? months : null;
+          }
+        }
+      } else if (monthlyPayment > 0 && debt.interestRate === 0) {
+        // No interest, simple division
+        estimatedMonths = Math.ceil(debt.currentBalance / monthlyPayment);
+      }
+      
+      // Format estimated payoff
+      let payoffEstimate: string = 'Never';
+      if (estimatedMonths !== null && estimatedMonths !== Infinity) {
+        if (estimatedMonths < 12) {
+          payoffEstimate = `${estimatedMonths} month${estimatedMonths !== 1 ? 's' : ''}`;
+        } else {
+          const years = Math.floor(estimatedMonths / 12);
+          const months = estimatedMonths % 12;
+          if (months === 0) {
+            payoffEstimate = `${years} year${years !== 1 ? 's' : ''}`;
+          } else {
+            payoffEstimate = `${years} year${years !== 1 ? 's' : ''}, ${months} month${months !== 1 ? 's' : ''}`;
+          }
+        }
+      }
+      
+      return {
+        name: debt.name,
+        currentBalance: debt.currentBalance,
+        monthlyPayment: monthlyPayment,
+        monthlyInterest: monthlyInterest,
+        principalPayment: principalPayment,
+        interestRate: debt.interestRate * 100,
+        estimatedMonths: estimatedMonths,
+        payoffEstimate: payoffEstimate,
+      };
+    }).filter(debt => debt.currentBalance > 0);
+  }, [model.debtItems]);
 
   // Account balances breakdown
   const accountBalanceData = useMemo(() => {
@@ -505,6 +889,14 @@ export function DashboardPage({
                 {' / '}
                 <span className="text-gray-600">{formatCurrency(availablePostExpenses)}</span>
               </div>
+              {allocationSurplusDeficit > 0 && (
+                <div className="text-xs text-gray-600 mt-2">
+                  <span className="text-green-600 font-medium">
+                    +{formatCurrency(allocationSurplusDeficit)}
+                  </span>
+                  {' will automatically go to Checking'}
+                </div>
+              )}
             </div>
           </>
         ) : (
@@ -513,6 +905,90 @@ export function DashboardPage({
           </div>
         )}
       </SectionCard>
+
+      {/* Debt Information */}
+      {debtInfo.length > 0 && (
+        <SectionCard 
+          title="Debts & Payoff Information" 
+          color="red"
+          icon={<span className="text-xl">💳</span>}
+        >
+          <div className="space-y-4">
+            {debtInfo.map((debt) => (
+              <div
+                key={debt.name}
+                className="bg-white border-2 border-red-200 rounded-xl p-4 hover:border-red-300 hover:shadow-sm transition-all"
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">{debt.name}</h3>
+                    <div className="text-sm text-gray-600">
+                      Current Balance: <span className="font-semibold text-gray-900">{formatCurrency(debt.currentBalance)}</span>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Interest Rate: <span className="font-semibold text-gray-900">{debt.interestRate.toFixed(2)}% APR</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-gray-200">
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Monthly Payment</div>
+                    <div className="text-base font-bold text-red-600">
+                      {debt.monthlyPayment > 0 ? formatCurrency(debt.monthlyPayment) : 'No payment'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Principal Payment</div>
+                    <div className="text-base font-bold text-green-600">
+                      {debt.principalPayment > 0 ? formatCurrency(debt.principalPayment) : '$0'}
+                    </div>
+                    {debt.monthlyPayment > 0 && (
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        ({((debt.principalPayment / debt.monthlyPayment) * 100).toFixed(0)}% of payment)
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 mb-1">Interest Payment</div>
+                    <div className="text-base font-bold text-orange-600">
+                      {formatCurrency(debt.monthlyInterest)}
+                    </div>
+                    {debt.monthlyPayment > 0 && (
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        ({((debt.monthlyInterest / debt.monthlyPayment) * 100).toFixed(0)}% of payment)
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {debt.monthlyPayment > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">Estimated Payoff Time</span>
+                      <span className="text-sm font-bold text-blue-600">{debt.payoffEstimate}</span>
+                    </div>
+                    {debt.monthlyPayment <= debt.monthlyInterest && (
+                      <div className="text-xs text-red-600 mt-1">
+                        ⚠️ Payment is less than or equal to interest. Debt will not decrease.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+            
+            <div className="pt-3 border-t-2 border-gray-200">
+              <div className="flex items-center justify-between px-2">
+                <span className="text-sm font-semibold text-gray-700">Total Monthly Debt Payments</span>
+                <span className="text-lg font-bold text-red-600">
+                  {formatCurrency(debtInfo.reduce((sum, debt) => sum + debt.monthlyPayment, 0))}
+                </span>
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+      )}
 
       {/* Account Balances */}
       <SectionCard 

@@ -27,6 +27,15 @@ export interface ExpenseItem {
   monthlyAmount: number;
 }
 
+export interface DebtItem {
+  id: string;
+  name: string;
+  currentBalance: number; // Remaining balance
+  interestRate: number; // Annual Percentage Rate (0-1, e.g., 0.18 = 18%)
+  minimumPayment: number; // Monthly payment
+  monthlyAllocation?: number; // Monthly allocation amount (optional, for planning page)
+}
+
 export interface AllocationItem {
   id: string;
   name: string;
@@ -45,6 +54,7 @@ export interface FinanceModel {
   salaryConfig: SalaryConfig;
   incomeItems: IncomeItem[];
   expenseItems: ExpenseItem[];
+  debtItems: DebtItem[];
   allocationItems: AllocationItem[];
   balanceItems: BalanceItem[];
   meta: {

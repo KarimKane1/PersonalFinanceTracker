@@ -16,6 +16,7 @@ interface IncomeExpensesPageProps {
   computeNetMonthly: (config: SalaryConfig) => number;
   totalMonthlyIncome: number;
   totalExpenses: number;
+  totalMinimumDebtPayments: number;
   availablePostExpenses: number;
 }
 
@@ -31,6 +32,7 @@ export function IncomeExpensesPage({
   computeNetMonthly,
   totalMonthlyIncome,
   totalExpenses,
+  totalMinimumDebtPayments,
   availablePostExpenses,
 }: IncomeExpensesPageProps) {
   return (
@@ -90,10 +92,15 @@ export function IncomeExpensesPage({
           emptyMessage="No expenses yet."
         />
         <div className="mt-6 pt-4 border-t-2 border-gray-200 bg-white/50 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-700">Available After Expenses</span>
-            <span className="text-2xl font-bold text-blue-600">{formatCurrency(availablePostExpenses)}</span>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-gray-700">Available After Expenses & Debt Payments</span>
+            <span className="text-xl sm:text-2xl font-bold text-blue-600">{formatCurrency(availablePostExpenses)}</span>
           </div>
+          {totalMinimumDebtPayments > 0 && (
+            <p className="text-xs text-gray-500 mt-2">
+              Note: Allocate debt payments in the Planning page. Minimum payment total: {formatCurrency(totalMinimumDebtPayments)}. Manage debts in the Debts & Loans tab.
+            </p>
+          )}
         </div>
       </SectionCard>
     </div>

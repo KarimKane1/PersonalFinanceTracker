@@ -1,4 +1,4 @@
-export type Page = 'income-expenses' | 'accounts' | 'planning' | 'dashboard';
+export type Page = 'income-expenses' | 'debts' | 'accounts' | 'planning' | 'dashboard';
 
 interface SidebarProps {
   currentPage: Page;
@@ -12,6 +12,7 @@ interface SidebarProps {
 export function Sidebar({ currentPage, onPageChange, currentProfileName, onLogout, isOpen, onToggle }: SidebarProps) {
   const pages: { id: Page; label: string; icon: string }[] = [
     { id: 'income-expenses', label: 'Income & Expenses', icon: '💰' },
+    { id: 'debts', label: 'Debts & Loans', icon: '💳' },
     { id: 'accounts', label: 'Accounts', icon: '🏦' },
     { id: 'planning', label: 'Planning', icon: '📊' },
     { id: 'dashboard', label: 'Dashboard', icon: '📈' },

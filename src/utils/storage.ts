@@ -87,6 +87,7 @@ export function getSampleModel(): FinanceModel {
       { id: '5', name: 'Misc.', monthlyAmount: 400 },
       { id: '6', name: 'Rent', monthlyAmount: 0 },
     ],
+    debtItems: [],
     allocationItems: [
       { id: '1', name: 'Robinhood', monthlyAmount: 937 },
       { id: '2', name: 'Amex HYSA', monthlyAmount: 100 },

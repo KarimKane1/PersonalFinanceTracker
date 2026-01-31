@@ -5,7 +5,7 @@ interface SectionCardProps {
   description?: string;
   icon?: ReactNode;
   children: ReactNode;
-  color?: 'blue' | 'green' | 'purple' | 'pink' | 'yellow';
+  color?: 'blue' | 'green' | 'purple' | 'pink' | 'yellow' | 'red';
 }
 
 /**
@@ -20,6 +20,7 @@ export function SectionCard({ title, icon, children, color = 'blue' }: SectionCa
     purple: 'border-purple-200 bg-gradient-to-br from-purple-50 to-white',
     pink: 'border-pink-200 bg-gradient-to-br from-pink-50 to-white',
     yellow: 'border-yellow-200 bg-gradient-to-br from-yellow-50 to-white',
+    red: 'border-red-200 bg-gradient-to-br from-red-50 to-white',
   };
 
   return (

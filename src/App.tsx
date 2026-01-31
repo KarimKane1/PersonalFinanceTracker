@@ -9,6 +9,7 @@ import { FinanceModel, SalaryConfig } from './types';
 import { Sidebar, Page } from './components/Sidebar';
 import { Auth } from './components/Auth';
 import { IncomeExpensesPage } from './pages/IncomeExpensesPage';
+import { DebtsPage } from './pages/DebtsPage';
 import { AccountsPage } from './pages/AccountsPage';
 import { PlanningPage } from './pages/PlanningPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -173,15 +174,22 @@ function App() {
     model.incomeItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
 
   const totalExpenses = model.expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+  const totalMinimumDebtPayments = model.debtItems.reduce((sum, item) => sum + item.minimumPayment, 0);
 
+  // Available funds after expenses (debts are allocated by user, not automatically deducted)
   const availablePostExpenses = totalMonthlyIncome - totalExpenses;
 
-  // Calculate total allocations from accounts
-  const totalAllocations = model.balanceItems.reduce((sum, item) => sum + (item.monthlyAllocation || 0), 0);
+  // Calculate total allocations from accounts and debts
+  const totalAccountAllocations = model.balanceItems.reduce((sum, item) => sum + (item.monthlyAllocation || 0), 0);
+  const totalDebtAllocations = model.debtItems.reduce((sum, item) => sum + (item.monthlyAllocation || 0), 0);
+  const totalAllocations = totalAccountAllocations + totalDebtAllocations;
 
   const allocationSurplusDeficit = availablePostExpenses - totalAllocations;
 
-  const startingNetWorth = model.balanceItems.reduce((sum, item) => sum + item.amount, 0);
+  // Calculate net worth: assets (balanceItems) minus debts (debtItems)
+  const totalAssets = model.balanceItems.reduce((sum, item) => sum + item.amount, 0);
+  const totalDebts = model.debtItems.reduce((sum, item) => sum + item.currentBalance, 0);
+  const startingNetWorth = totalAssets - totalDebts;
 
   // Update handlers
   const updateSalaryConfig = (updates: Partial<SalaryConfig>) => {
@@ -236,6 +244,30 @@ function App() {
     setModel(prev => ({
       ...prev,
       expenseItems: prev.expenseItems.filter(item => item.id !== id),
+    }));
+  };
+
+  const addDebtItem = () => {
+    const newId = Date.now().toString();
+    setModel(prev => ({
+      ...prev,
+      debtItems: [...prev.debtItems, { id: newId, name: '', currentBalance: 0, interestRate: 0, minimumPayment: 0 }],
+    }));
+  };
+
+  const updateDebtItem = (id: string, field: 'name' | 'currentBalance' | 'interestRate' | 'minimumPayment', value: string | number) => {
+    setModel(prev => ({
+      ...prev,
+      debtItems: prev.debtItems.map(item =>
+        item.id === id ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  const deleteDebtItem = (id: string) => {
+    setModel(prev => ({
+      ...prev,
+      debtItems: prev.debtItems.filter(item => item.id !== id),
     }));
   };
 
@@ -344,7 +376,18 @@ function App() {
               computeNetMonthly={computeNetMonthly}
               totalMonthlyIncome={totalMonthlyIncome}
               totalExpenses={totalExpenses}
+              totalMinimumDebtPayments={totalMinimumDebtPayments}
               availablePostExpenses={availablePostExpenses}
+            />
+          )}
+
+          {currentPage === 'debts' && (
+            <DebtsPage
+              debtItems={model.debtItems}
+              onAdd={addDebtItem}
+              onUpdate={updateDebtItem}
+              onDelete={deleteDebtItem}
+              totalMinimumDebtPayments={totalMinimumDebtPayments}
             />
           )}
 
@@ -361,11 +404,20 @@ function App() {
           {currentPage === 'planning' && (
             <PlanningPage
               accounts={model.balanceItems}
+              debtItems={model.debtItems}
               onUpdateAllocation={(accountId, amount) => {
                 setModel(prev => ({
                   ...prev,
                   balanceItems: prev.balanceItems.map(item =>
                     item.id === accountId ? { ...item, monthlyAllocation: amount } : item
+                  ),
+                }));
+              }}
+              onUpdateDebtAllocation={(debtId, amount) => {
+                setModel(prev => ({
+                  ...prev,
+                  debtItems: prev.debtItems.map(item =>
+                    item.id === debtId ? { ...item, monthlyAllocation: amount } : item
                   ),
                 }));
               }}
