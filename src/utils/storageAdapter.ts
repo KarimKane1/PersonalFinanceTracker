@@ -138,7 +138,7 @@ export const auth = {
       };
     } else {
       // In prod, use Supabase auth state listener
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
         callback(session?.user ? { id: session.user.id, email: session.user.email || null } : null);
       });
       return () => subscription.unsubscribe();
