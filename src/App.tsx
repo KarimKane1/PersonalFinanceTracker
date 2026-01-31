@@ -36,7 +36,7 @@
  *    - Routing can be added without changing component structure
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { FinanceModel, SalaryConfig } from './types';
 import { Sidebar, Page } from './components/Sidebar';
 import { ProfileSelection } from './components/ProfileSelection';
@@ -170,29 +170,6 @@ function App() {
     }));
   };
 
-  const addAllocationItem = () => {
-    const newId = Date.now().toString();
-    setModel(prev => ({
-      ...prev,
-      allocationItems: [...prev.allocationItems, { id: newId, name: '', monthlyAmount: 0 }],
-    }));
-  };
-
-  const updateAllocationItem = (id: string, field: 'name' | 'monthlyAmount', value: string | number) => {
-    setModel(prev => ({
-      ...prev,
-      allocationItems: prev.allocationItems.map(item =>
-        item.id === id ? { ...item, [field]: value } : item
-      ),
-    }));
-  };
-
-  const deleteAllocationItem = (id: string) => {
-    setModel(prev => ({
-      ...prev,
-      allocationItems: prev.allocationItems.filter(item => item.id !== id),
-    }));
-  };
 
   const addBalanceItem = () => {
     const newId = Date.now().toString();

@@ -1,4 +1,3 @@
-import React from 'react';
 import { FinanceModel, SalaryConfig } from '../types';
 import { formatCurrency } from '../utils/format';
 import { SectionCard } from '../components/SectionCard';
@@ -52,12 +51,17 @@ export function IncomeExpensesPage({
           <EditableRowTable
             rows={model.incomeItems.map(item => ({ id: item.id, name: item.name, amount: item.monthlyAmount }))}
             onAdd={onAddIncomeItem}
-            onUpdate={onUpdateIncomeItem}
+            onUpdate={(id, field, value) => {
+              if (field === 'amount') {
+                onUpdateIncomeItem(id, 'monthlyAmount', value);
+              } else {
+                onUpdateIncomeItem(id, field, value);
+              }
+            }}
             onDelete={onDeleteIncomeItem}
             totalLabel="Total Monthly Income"
             totalAmount={totalMonthlyIncome}
             allowNegative={false}
-            amountLabel="Monthly Amount"
             emptyMessage="No additional income streams."
           />
         </div>
@@ -72,12 +76,17 @@ export function IncomeExpensesPage({
         <EditableRowTable
           rows={model.expenseItems.map(item => ({ id: item.id, name: item.name, amount: item.monthlyAmount }))}
           onAdd={onAddExpenseItem}
-          onUpdate={onUpdateExpenseItem}
+          onUpdate={(id, field, value) => {
+            if (field === 'amount') {
+              onUpdateExpenseItem(id, 'monthlyAmount', value);
+            } else {
+              onUpdateExpenseItem(id, field, value);
+            }
+          }}
           onDelete={onDeleteExpenseItem}
           totalLabel="Total Expenses"
           totalAmount={totalExpenses}
           allowNegative={false}
-          amountLabel="Monthly Amount"
           emptyMessage="No expenses yet."
         />
         <div className="mt-6 pt-4 border-t-2 border-gray-200 bg-white/50 rounded-xl p-4">

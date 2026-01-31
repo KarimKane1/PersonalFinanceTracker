@@ -1,4 +1,3 @@
-import React from 'react';
 import { SalaryConfig } from '../types';
 import { formatCurrency, parseCurrencyInput } from '../utils/format';
 

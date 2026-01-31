@@ -1,10 +1,10 @@
-import React from 'react';
+import { ReactNode } from 'react';
 
 interface SectionCardProps {
   title: string;
   description?: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
+  icon?: ReactNode;
+  children: ReactNode;
   color?: 'blue' | 'green' | 'purple' | 'pink' | 'yellow';
 }
 
@@ -13,7 +13,7 @@ interface SectionCardProps {
  * 
  * Provides consistent styling and layout for each section of the inputs page.
  */
-export function SectionCard({ title, description, icon, children, color = 'blue' }: SectionCardProps) {
+export function SectionCard({ title, icon, children, color = 'blue' }: SectionCardProps) {
   const colorClasses = {
     blue: 'border-blue-200 bg-gradient-to-br from-blue-50 to-white',
     green: 'border-green-200 bg-gradient-to-br from-green-50 to-white',

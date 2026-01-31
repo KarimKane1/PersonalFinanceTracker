@@ -1,4 +1,3 @@
-import React from 'react';
 
 export type Page = 'income-expenses' | 'accounts' | 'planning' | 'dashboard';
 

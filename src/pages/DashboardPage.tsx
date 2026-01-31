@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FinanceModel } from '../types';
 import { formatCurrency } from '../utils/format';
 import { SectionCard } from '../components/SectionCard';
@@ -331,7 +331,7 @@ export function DashboardPage({
                   tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  formatter={(value: number, name: string) => formatCurrency(value)}
+                  formatter={(value: number) => formatCurrency(value)}
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                   labelFormatter={(label) => `Month ${label}`}
                 />
@@ -427,7 +427,7 @@ export function DashboardPage({
                 fill="#8884d8"
                 dataKey="value"
               >
-                {incomeData.map((entry, index) => (
+                {incomeData.map((_, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
@@ -438,7 +438,7 @@ export function DashboardPage({
               <Legend 
                 verticalAlign="bottom" 
                 height={36}
-                formatter={(value, entry: any) => {
+                formatter={(value) => {
                   const item = incomeData.find(d => d.name === value);
                   const percentage = item ? ((item.value / totalMonthlyIncome) * 100).toFixed(1) : '0';
                   return `${value}: ${percentage}%`;
@@ -490,7 +490,7 @@ export function DashboardPage({
                 <XAxis type="number" stroke="#6b7280" tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
                 <YAxis dataKey="name" type="category" stroke="#6b7280" width={120} />
                 <Tooltip 
-                  formatter={(value: number, name: string, props: any) => [
+                  formatter={(value: number, _name: string, props: any) => [
                     formatCurrency(value),
                     `APY: ${props.payload.apy.toFixed(2)}%`
                   ]}
@@ -531,7 +531,7 @@ export function DashboardPage({
                   tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  formatter={(value: number, name: string, props: any) => [
+                  formatter={(value: number, _name: string, props: any) => [
                     formatCurrency(value),
                     `APY: ${props.payload.apy.toFixed(2)}%`
                   ]}

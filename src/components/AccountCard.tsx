@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BalanceItem } from '../types';
 import { formatCurrency } from '../utils/format';
 

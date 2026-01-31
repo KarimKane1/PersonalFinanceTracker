@@ -1,4 +1,3 @@
-import React from 'react';
 import { BalanceItem } from '../types';
 import { formatCurrency } from '../utils/format';
 import { SectionCard } from '../components/SectionCard';

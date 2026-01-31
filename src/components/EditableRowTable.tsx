@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { formatCurrency, parseCurrencyInput } from '../utils/format';
+import { useState } from 'react';
+import { formatCurrency } from '../utils/format';
 
 export interface EditableRow {
   id: string;
@@ -33,7 +33,6 @@ export function EditableRowTable({
   totalLabel,
   totalAmount,
   allowNegative = false,
-  amountLabel = 'Amount',
   emptyMessage = 'No items yet. Click "Add Item" to get started.',
 }: EditableRowTableProps) {
   // Track local input values for amounts to allow free typing
@@ -69,7 +68,7 @@ export function EditableRowTable({
     });
   };
 
-  const handleAmountKeyDown = (id: string, value: string, e: React.KeyboardEvent) => {
+  const handleAmountKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.currentTarget.blur();
     }
@@ -106,7 +105,7 @@ export function EditableRowTable({
                     value={getAmountInputValue(row.id, row.amount)}
                     onChange={(e) => handleAmountInputChange(row.id, e.target.value)}
                     onBlur={(e) => handleAmountBlur(row.id, e.target.value)}
-                    onKeyDown={(e) => handleAmountKeyDown(row.id, e.currentTarget.value, e)}
+                    onKeyDown={handleAmountKeyDown}
                     placeholder="0"
                     className="w-full pl-5 pr-2 py-1.5 text-sm text-right border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
                   />
