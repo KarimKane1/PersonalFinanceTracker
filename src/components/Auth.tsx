@@ -54,13 +54,27 @@ export function Auth() {
         // Check if we're in production and if email confirmation is required
         // In Supabase, if email confirmation is enabled, signUp returns user but no session
         const isProduction = !(import.meta as any).env?.DEV;
+        
+        // Check if email confirmation is required by checking if we have a session
+        // If no session, email confirmation is required
         if (isProduction) {
-          // Check if we need to wait for email confirmation
-          // We'll detect this by checking if the auth state changes
-          // For now, show the email confirmation message
-          setEmailSent(true);
-          setLoading(false);
-          return;
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            // If no session, email confirmation is required
+            if (!session) {
+              setEmailSent(true);
+              setLoading(false);
+              return;
+            }
+            // If we have a session, user is already confirmed (email confirmation disabled)
+            // Continue with normal flow - auth state listener will pick it up
+          } catch (err) {
+            // If we can't check, assume email confirmation is required
+            setEmailSent(true);
+            setLoading(false);
+            return;
+          }
         }
       }
 
