@@ -21,7 +21,31 @@ export async function loadModelFromSupabase(userId: string): Promise<FinanceMode
       return null;
     }
 
-    return (data as any)?.data as FinanceModel;
+    const model = (data as any)?.data as FinanceModel;
+    
+    // Normalize model to ensure all arrays exist
+    if (model) {
+      if (!model.balanceItems) model.balanceItems = [];
+      if (!model.debtItems) model.debtItems = [];
+      if (!model.incomeItems) model.incomeItems = [];
+      if (!model.expenseItems) model.expenseItems = [];
+      if (!model.allocationItems) model.allocationItems = [];
+      if (!model.salaryConfig) {
+        model.salaryConfig = {
+          mode: "net_only",
+          annualGross: 0,
+          netPercent: 0.7,
+          netMonthly: 0,
+        };
+      }
+      if (!model.meta) {
+        model.meta = {
+          lastSavedAt: new Date().toISOString(),
+        };
+      }
+    }
+    
+    return model;
   } catch (error) {
     console.error('Error loading model from Supabase:', error);
     return null;

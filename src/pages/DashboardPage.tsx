@@ -113,7 +113,7 @@ export function DashboardPage({
       
       // Process debts: add interest first (debts always grow), then process payments individually
       let totalDebtInterest = 0;
-      const checkingAccount = model.balanceItems.find(acc => 
+      const checkingAccount = (model.balanceItems || []).find(acc => 
         acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
       );
       
@@ -223,11 +223,11 @@ export function DashboardPage({
     const accountProjs: { [key: string]: any[] } = {};
     const debtProjs: { [key: string]: any[] } = {};
     
-    // Initialize account and debt tracking
-    model.balanceItems.forEach(account => {
+    // Initialize account and debt tracking (with null checks)
+    (model.balanceItems || []).forEach(account => {
       accountProjs[account.id] = [];
     });
-    model.debtItems.forEach(debt => {
+    (model.debtItems || []).forEach(debt => {
       debtProjs[debt.id] = [];
     });
 
@@ -300,7 +300,7 @@ export function DashboardPage({
 
       // Process debts: add interest first (debts always grow), then process payments individually
       let totalDebtInterest = 0;
-      const checkingAccount = model.balanceItems.find(acc => 
+      const checkingAccount = (model.balanceItems || []).find(acc => 
         acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
       );
       

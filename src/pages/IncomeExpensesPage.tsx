@@ -51,7 +51,7 @@ export function IncomeExpensesPage({
         <div className="mt-4">
           <h3 className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Additional Income Streams</h3>
           <EditableRowTable
-            rows={model.incomeItems.map(item => ({ id: item.id, name: item.name, amount: item.monthlyAmount }))}
+            rows={(model.incomeItems || []).map(item => ({ id: item.id, name: item.name, amount: item.monthlyAmount }))}
             onAdd={onAddIncomeItem}
             onUpdate={(id, field, value) => {
               if (field === 'amount') {
@@ -76,7 +76,7 @@ export function IncomeExpensesPage({
         icon={<span className="text-xl">📊</span>}
       >
         <EditableRowTable
-          rows={model.expenseItems.map(item => ({ id: item.id, name: item.name, amount: item.monthlyAmount }))}
+          rows={(model.expenseItems || []).map(item => ({ id: item.id, name: item.name, amount: item.monthlyAmount }))}
           onAdd={onAddExpenseItem}
           onUpdate={(id, field, value) => {
             if (field === 'amount') {
