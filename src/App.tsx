@@ -1,96 +1,78 @@
 /**
- * Personal Finance App - Inputs Page (V1)
+ * Personal Finance App - Main Application Component
  * 
- * ARCHITECTURE OVERVIEW:
- * 
- * This page implements the Inputs Page (Page 1) of the personal finance app.
- * The architecture is designed to support future projection calculations and
- * dashboard visualizations:
- * 
- * 1. DATA MODEL: All inputs are stored in a structured FinanceModel type
- *    (src/types.ts). This model is flexible - items are arrays that can be
- *    dynamically added/removed, not hardcoded rows.
- * 
- * 2. COMPUTATIONS: Calculations are derived from the model state using pure
- *    functions. This separation allows us to:
- *    - Reuse the same calculations in projections (future)
- *    - Test calculations independently
- *    - Update calculations without touching UI code
- * 
- * 3. COMPONENT STRUCTURE:
- *    - SectionCard: Reusable container for each section
- *    - SalaryCardHeader: Handles salary mode toggle and inputs
- *    - EditableRowTable: Generic CRUD component for managing item lists
- *    - App: Orchestrates state, computations, and persistence
- * 
- * 4. PERSISTENCE: LocalStorage saves the entire model state. This local-first
- *    approach means:
- *    - No backend needed for v1
- *    - Data persists across sessions
- *    - Easy to extend with export/import later
- * 
- * 5. FUTURE EXTENSIBILITY:
- *    - Projections will read from the same FinanceModel
- *    - Calculations can be extracted to a separate module
- *    - Charts will consume computed projection data
- *    - Routing can be added without changing component structure
+ * Uses storage adapter to switch between localStorage (dev) and Supabase (prod)
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { FinanceModel, SalaryConfig } from './types';
 import { Sidebar, Page } from './components/Sidebar';
-import { ProfileSelection } from './components/ProfileSelection';
+import { Auth } from './components/Auth';
 import { IncomeExpensesPage } from './pages/IncomeExpensesPage';
 import { AccountsPage } from './pages/AccountsPage';
 import { PlanningPage } from './pages/PlanningPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { 
-  getCurrentProfileId, 
-  setCurrentProfileId, 
-  getProfiles,
-  loadModelForProfile,
-  saveModelForProfile,
-  getEmptyModel,
-} from './utils/profileStorage';
+import { auth, storage } from './utils/storageAdapter';
+import type { AuthUser } from './utils/storageAdapter';
 
 function App() {
-  const [currentProfileId, setCurrentProfileIdState] = useState<string | null>(() => getCurrentProfileId());
-  const [currentPage, setCurrentPage] = useState<Page>('income-expenses');
-  const [model, setModel] = useState<FinanceModel>(() => {
-    const profileId = getCurrentProfileId();
-    if (!profileId) return getEmptyModel();
-    const loaded = loadModelForProfile(profileId);
-    return loaded || getEmptyModel();
-  });
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
+  const [model, setModel] = useState<FinanceModel>(storage.getEmptyModel());
 
-  // Update model when profile changes
+  // Check for existing session on mount
   useEffect(() => {
-    if (currentProfileId) {
-      const loaded = loadModelForProfile(currentProfileId);
-      setModel(loaded || getEmptyModel());
-    }
-  }, [currentProfileId]);
+    auth.getCurrentUser().then((currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+      if (currentUser) {
+        loadUserData(currentUser.id);
+      }
+    });
 
-  // Auto-save to localStorage whenever model changes
-  useEffect(() => {
-    if (currentProfileId) {
-      saveModelForProfile(currentProfileId, model);
-    }
-  }, [model, currentProfileId]);
+    // Listen for auth state changes
+    const unsubscribe = auth.onAuthStateChange((currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        loadUserData(currentUser.id);
+      } else {
+        setModel(storage.getEmptyModel());
+      }
+    });
 
-  const handleProfileSelect = (profileId: string) => {
-    setCurrentProfileId(profileId);
-    setCurrentProfileIdState(profileId);
+    return () => unsubscribe();
+  }, []);
+
+  // Load user data
+  const loadUserData = async (userId: string) => {
+    const loaded = await storage.loadModel(userId);
+    if (loaded) {
+      setModel(loaded);
+    } else {
+      // Initialize with empty model if no data exists
+      const emptyModel = storage.getEmptyModel();
+      setModel(emptyModel);
+      await storage.saveModel(userId, emptyModel);
+    }
   };
 
-  const handleLogout = () => {
-    setCurrentProfileIdState(null);
-    localStorage.removeItem('pf_current_profile_v1');
-  };
+  // Auto-save whenever model changes
+  useEffect(() => {
+    if (user) {
+      // Debounce saves to avoid too many API calls
+      const timeoutId = setTimeout(() => {
+        storage.saveModel(user.id, model);
+      }, 1000);
 
-  const currentProfile = currentProfileId 
-    ? getProfiles().find(p => p.id === currentProfileId)
-    : null;
+      return () => clearTimeout(timeoutId);
+    }
+  }, [model, user]);
+
+  const handleLogout = async () => {
+    await auth.signOut();
+    setModel(storage.getEmptyModel());
+  };
 
   // Computations
   const computeNetMonthly = useCallback((config: SalaryConfig): number => {
@@ -170,7 +152,6 @@ function App() {
     }));
   };
 
-
   const addBalanceItem = () => {
     const newId = Date.now().toString();
     setModel(prev => ({
@@ -195,16 +176,29 @@ function App() {
     }));
   };
 
-
   const formatLastSaved = () => {
     if (!model.meta.lastSavedAt) return 'Never';
     const date = new Date(model.meta.lastSavedAt);
     return date.toLocaleString();
   };
 
-  // Show profile selection if no profile is selected
-  if (!currentProfileId || !currentProfile) {
-    return <ProfileSelection onProfileSelect={handleProfileSelect} />;
+  // Show loading screen while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-3xl">💰</span>
+          </div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth screen if not logged in
+  if (!user) {
+    return <Auth />;
   }
 
   return (
@@ -213,7 +207,7 @@ function App() {
       <Sidebar 
         currentPage={currentPage} 
         onPageChange={setCurrentPage}
-        currentProfileName={currentProfile.name}
+        currentProfileName={user.email || user.name || 'User'}
         onLogout={handleLogout}
       />
 
@@ -229,6 +223,9 @@ function App() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-gray-500 bg-white px-3 py-1.5 rounded-lg shadow-sm">💾 {formatLastSaved()}</span>
+                {import.meta.env.DEV && (
+                  <span className="text-xs text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg shadow-sm">🔧 Dev Mode (localStorage)</span>
+                )}
               </div>
             </div>
           </header>
@@ -296,4 +293,3 @@ function App() {
 }
 
 export default App;
-
