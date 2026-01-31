@@ -23,31 +23,72 @@ function App() {
 
   // Check for existing session on mount
   useEffect(() => {
+    let isMounted = true;
+    let hasLoadedInitialData = false;
+
     auth.getCurrentUser().then((currentUser) => {
+      if (!isMounted) return;
       setUser(currentUser);
       setLoading(false);
       if (currentUser) {
+        hasLoadedInitialData = true;
         loadUserData(currentUser.id);
       }
     });
 
+    // Track previous user ID to detect changes
+    let previousUserId: string | null = null;
+    
     // Listen for auth state changes
     const unsubscribe = auth.onAuthStateChange((currentUser) => {
+      if (!isMounted) return;
+      
+      // Check if user actually changed
+      const newUserId = currentUser?.id || null;
+      const userChanged = previousUserId !== newUserId;
+      previousUserId = newUserId;
+      
       setUser(currentUser);
+      
       if (currentUser) {
-        loadUserData(currentUser.id);
+        // If user changed (login) or we haven't loaded data yet, load it
+        if (userChanged || !hasLoadedInitialData) {
+          hasLoadedInitialData = true;
+          loadUserData(currentUser.id);
+        }
       } else {
+        // User logged out
         setModel(storage.getEmptyModel());
+        hasLoadedInitialData = false;
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, []);
 
   // Load user data
   const loadUserData = async (userId: string) => {
     const loaded = await storage.loadModel(userId);
     if (loaded) {
+      // Ensure Checking account exists (migration for existing users)
+      const hasChecking = loaded.balanceItems.some(item => 
+        item.name.toLowerCase() === 'checking' || item.id === 'default-checking'
+      );
+      
+      if (!hasChecking) {
+        loaded.balanceItems.unshift({
+          id: 'default-checking',
+          name: 'Checking',
+          amount: 0,
+          apy: 0,
+          monthlyAllocation: 0,
+        });
+        await storage.saveModel(userId, loaded);
+      }
+      
       setModel(loaded);
     } else {
       // Initialize with empty model if no data exists
@@ -57,12 +98,14 @@ function App() {
     }
   };
 
-  // Auto-save whenever model changes
+  // Auto-save whenever model changes (but don't reload after saving)
   useEffect(() => {
     if (user) {
       // Debounce saves to avoid too many API calls
       const timeoutId = setTimeout(() => {
-        storage.saveModel(user.id, model);
+        storage.saveModel(user.id, model).catch(err => {
+          console.error('Error saving model:', err);
+        });
       }, 1000);
 
       return () => clearTimeout(timeoutId);
@@ -223,7 +266,7 @@ function App() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-gray-500 bg-white px-3 py-1.5 rounded-lg shadow-sm">💾 {formatLastSaved()}</span>
-                {import.meta.env.DEV && (
+                {(import.meta as any).env?.DEV && (
                   <span className="text-xs text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg shadow-sm">🔧 Dev Mode (localStorage)</span>
                 )}
               </div>

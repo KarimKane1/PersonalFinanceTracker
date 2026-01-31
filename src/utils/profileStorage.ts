@@ -232,7 +232,9 @@ export function getEmptyModel(): FinanceModel {
     incomeItems: [],
     expenseItems: [],
     allocationItems: [],
-    balanceItems: [],
+    balanceItems: [
+      { id: 'default-checking', name: 'Checking', amount: 0, apy: 0, monthlyAllocation: 0 },
+    ],
     meta: {
       lastSavedAt: new Date().toISOString(),
     },

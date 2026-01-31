@@ -86,12 +86,14 @@ export function EditableRowTable({
             <div
               key={row.id}
               className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-sm transition-all"
+              onClick={(e) => e.stopPropagation()}
             >
               <div className="flex-1 min-w-0">
                 <input
                   type="text"
                   value={row.name}
                   onChange={(e) => handleNameChange(row.id, e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
                   placeholder="Item name"
                   className="w-full px-3 py-2 text-sm border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
                 />
@@ -106,13 +108,19 @@ export function EditableRowTable({
                     onChange={(e) => handleAmountInputChange(row.id, e.target.value)}
                     onBlur={(e) => handleAmountBlur(row.id, e.target.value)}
                     onKeyDown={handleAmountKeyDown}
+                    onClick={(e) => e.stopPropagation()}
                     placeholder="0"
                     className="w-full pl-5 pr-2 py-1.5 text-sm text-right border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
                   />
                 </div>
               </div>
               <button
-                onClick={() => onDelete(row.id)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete(row.id);
+                }}
                 className="flex-shrink-0 w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
                 title="Delete"
               >
@@ -133,7 +141,12 @@ export function EditableRowTable({
 
       {/* Add Button */}
       <button
-        onClick={onAdd}
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onAdd();
+        }}
         className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all text-sm font-semibold mt-3 shadow-sm hover:shadow-md"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

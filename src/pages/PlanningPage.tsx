@@ -35,6 +35,18 @@ export function PlanningPage({
         </div>
       </div>
 
+      {/* Info Box */}
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <span className="text-xl">ℹ️</span>
+          <div className="flex-1">
+            <p className="text-sm text-gray-700">
+              <strong>Note:</strong> Any money that isn't allocated to specific accounts will automatically go to your <strong>Checking</strong> account. Make sure you have a Checking account set up in the Accounts page.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Allocations Section */}
       <SectionCard 
         title="Monthly Allocations" 
@@ -51,16 +63,33 @@ export function PlanningPage({
             <div className="space-y-3 mb-6">
               {accounts.map((account) => {
                 const allocationAmount = (account as any).monthlyAllocation || 0;
+                const isChecking = account.name.toLowerCase() === 'checking' || account.id === 'default-checking';
                 return (
                   <div
                     key={account.id}
-                    className="flex items-center gap-3 p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-yellow-300 hover:shadow-sm transition-all"
+                    className={`flex items-center gap-3 p-4 bg-white border-2 rounded-xl hover:shadow-sm transition-all ${
+                      isChecking 
+                        ? 'border-blue-300 bg-blue-50/30' 
+                        : 'border-gray-200 hover:border-yellow-300'
+                    }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-gray-900 mb-1">{account.name}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-semibold text-gray-900">{account.name}</div>
+                        {isChecking && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                            Default
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-gray-500">
                         Current Balance: {formatCurrency(account.amount)} • APY: {(account.apy * 100).toFixed(2)}%
                       </div>
+                      {isChecking && allocationSurplusDeficit > 0 && (
+                        <div className="text-xs text-blue-600 mt-1 font-medium">
+                          + {formatCurrency(allocationSurplusDeficit)} excess will be added here
+                        </div>
+                      )}
                     </div>
                     <div className="w-36 flex-shrink-0">
                       <div className="relative">
@@ -92,7 +121,7 @@ export function PlanningPage({
             }`}>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-semibold text-gray-700">
-                  {allocationSurplusDeficit >= 0 ? 'Remaining' : 'Over-allocated'}
+                  {allocationSurplusDeficit >= 0 ? 'Remaining (goes to Checking)' : 'Over-allocated'}
                 </span>
                 <span className={`text-2xl font-bold ${
                   allocationSurplusDeficit >= 0 ? 'text-green-600' : 'text-red-600'
@@ -107,7 +136,7 @@ export function PlanningPage({
               )}
               {allocationSurplusDeficit > 0 && (
                 <p className="text-xs text-gray-600 mt-1">
-                  You have {formatCurrency(allocationSurplusDeficit)} remaining to allocate.
+                  {formatCurrency(allocationSurplusDeficit)} will automatically go to your <strong>Checking</strong> account.
                 </p>
               )}
               {allocationSurplusDeficit === 0 && (

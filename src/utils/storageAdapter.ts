@@ -6,13 +6,12 @@
  */
 
 import { FinanceModel } from '../types';
-import { Profile } from '../types/profile';
 import * as profileStorage from './profileStorage';
 import * as supabaseStorage from './supabaseStorage';
 import { supabase } from './supabase';
 
 // Check if we're in development mode
-const isDevelopment = import.meta.env.DEV || (import.meta as any).env?.MODE === 'development';
+const isDevelopment = (import.meta as any).env?.DEV || (import.meta as any).env?.MODE === 'development';
 
 export interface AuthUser {
   id: string;
@@ -26,19 +25,34 @@ export interface AuthUser {
 export const auth = {
   async signUp(email: string, password: string): Promise<{ user: AuthUser | null; error: string | null }> {
     if (isDevelopment) {
-      // In dev, create a local profile instead
+      // In dev, check if profile already exists
+      const profiles = profileStorage.getProfiles();
+      const existingProfile = profiles.find(p => p.name.toLowerCase() === email.toLowerCase());
+      
+      if (existingProfile) {
+        return { user: null, error: 'An account with this email already exists. Please sign in instead.' };
+      }
+      
+      // Create a local profile
       const profile = profileStorage.createProfile(email);
       profileStorage.setCurrentProfileId(profile.id);
       return { user: { id: profile.id, email, name: profile.name }, error: null };
     } else {
-      // In prod, use Supabase
+      // In prod, try to sign up - Supabase will handle duplicate email check
       const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) return { user: null, error: error.message };
+      
+      if (error) {
+        // Check if it's a duplicate email error
+        if (error.message.includes('already registered') || error.message.includes('already exists') || error.message.includes('User already registered')) {
+          return { user: null, error: 'An account with this email already exists. Please sign in instead.' };
+        }
+        return { user: null, error: error.message };
+      }
       
       if (data.user) {
         // Initialize empty finance data
         await supabaseStorage.saveModelToSupabase(data.user.id, profileStorage.getEmptyModel());
-        return { user: { id: data.user.id, email: data.user.email }, error: null };
+        return { user: { id: data.user.id, email: data.user.email || null }, error: null };
       }
       return { user: null, error: 'Failed to create user' };
     }
@@ -62,7 +76,7 @@ export const auth = {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { user: null, error: error.message };
       
-      return { user: { id: data.user.id, email: data.user.email }, error: null };
+      return { user: { id: data.user.id, email: data.user.email || null }, error: null };
     }
   },
 
@@ -89,31 +103,43 @@ export const auth = {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return null;
       
-      return { id: session.user.id, email: session.user.email };
+      return { id: session.user.id, email: session.user.email || null };
     }
   },
 
   onAuthStateChange(callback: (user: AuthUser | null) => void): () => void {
     if (isDevelopment) {
-      // In dev, check localStorage periodically (simple approach)
+      // In dev, check periodically to detect auth changes
+      let lastProfileId: string | null = null;
+      
       const checkAuth = () => {
         const profileId = profileStorage.getCurrentProfileId();
-        if (profileId) {
-          const profiles = profileStorage.getProfiles();
-          const profile = profiles.find(p => p.id === profileId);
-          callback(profile ? { id: profile.id, email: profile.name, name: profile.name } : null);
-        } else {
-          callback(null);
+        
+        // Only call callback if profile ID actually changed
+        if (profileId !== lastProfileId) {
+          lastProfileId = profileId;
+          
+          if (profileId) {
+            const profiles = profileStorage.getProfiles();
+            const profile = profiles.find(p => p.id === profileId);
+            callback(profile ? { id: profile.id, email: profile.name, name: profile.name } : null);
+          } else {
+            callback(null);
+          }
         }
       };
       
       checkAuth();
-      const interval = setInterval(checkAuth, 1000);
-      return () => clearInterval(interval);
+      // Check every 500ms - fast enough to feel instant, slow enough not to cause issues
+      const interval = setInterval(checkAuth, 500);
+      
+      return () => {
+        clearInterval(interval);
+      };
     } else {
       // In prod, use Supabase auth state listener
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        callback(session?.user ? { id: session.user.id, email: session.user.email } : null);
+        callback(session?.user ? { id: session.user.id, email: session.user.email || null } : null);
       });
       return () => subscription.unsubscribe();
     }

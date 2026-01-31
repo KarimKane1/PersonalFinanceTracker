@@ -113,12 +113,14 @@ export function SalaryCardHeader({
               />
             </div>
           </div>
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-blue-700">Net Monthly (Computed)</span>
-              <span className="text-xl font-bold text-blue-900">{formatCurrency(computedNetMonthly)}</span>
+          {computedNetMonthly > 0 && (
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200 rounded-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-blue-700">Net Monthly (Computed)</span>
+                <span className="text-xl font-bold text-blue-900">{formatCurrency(computedNetMonthly)}</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       ) : (
         <div>
@@ -135,7 +137,7 @@ export function SalaryCardHeader({
                 const value = e.target.value.replace(/[^0-9.]/g, '');
                 handleNetMonthlyChange(value);
               }}
-              placeholder="4200"
+              placeholder="Enter amount"
               className="w-full pl-6 pr-2.5 py-2.5 text-sm border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all bg-white"
             />
           </div>

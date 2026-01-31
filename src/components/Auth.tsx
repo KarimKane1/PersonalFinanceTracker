@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { auth } from '../utils/storageAdapter';
+import { supabase } from '../utils/supabase';
 
 export function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,6 +15,20 @@ export function Auth() {
     setLoading(true);
     setError(null);
 
+    // Validate passwords match on sign up
+    if (isSignUp) {
+      if (password !== confirmPassword) {
+        setError('Passwords do not match');
+        setLoading(false);
+        return;
+      }
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const result = isSignUp
         ? await auth.signUp(email, password)
@@ -20,10 +36,54 @@ export function Auth() {
 
       if (result.error) {
         setError(result.error);
+        setLoading(false);
+        // If it's a duplicate email error, suggest switching to sign in
+        if (result.error.includes('already exists') && isSignUp) {
+          // Optionally auto-switch to sign in after a delay
+          setTimeout(() => {
+            // Don't auto-switch, just show the error and let user manually switch
+          }, 0);
+        }
+        return;
       }
-      // Auth state change will be handled by the listener in App.tsx
+
+      // If successful, the auth state change listener will pick it up automatically
+      // No need to do anything else - the listener checks every 500ms in dev mode
     } catch (err: any) {
       setError(err.message || 'An error occurred');
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address first');
+      return;
+    }
+
+    // In dev mode, just show a message
+    if ((import.meta as any).env?.DEV) {
+      alert(`Dev mode: Password reset not available. Your profile is: ${email}`);
+      return;
+    }
+
+    // In production, use Supabase password reset
+    setLoading(true);
+    setError(null);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setError(null);
+        alert('Password reset email sent! Check your inbox for instructions.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset email');
     } finally {
       setLoading(false);
     }
@@ -37,7 +97,7 @@ export function Auth() {
             <span className="text-3xl">💰</span>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Personal Finance Planner</h1>
-          <p className="text-gray-600">Sign in to access your financial data</p>
+          <p className="text-gray-600">{isSignUp ? 'Create an account to get started' : 'Sign in to access your financial data'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -71,17 +131,38 @@ export function Auth() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required={!import.meta.env.DEV}
-              minLength={import.meta.env.DEV ? 0 : 6}
+              required={!(import.meta as any).env?.DEV}
+              minLength={(import.meta as any).env?.DEV ? 0 : 6}
               className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               placeholder="••••••••"
             />
-            {import.meta.env.DEV && (
+            {(import.meta as any).env?.DEV && !isSignUp && (
               <p className="text-xs text-gray-500 mt-1">
                 🔧 Dev mode: Password optional, email will be used as profile name
               </p>
             )}
           </div>
+
+          {isSignUp && (
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1.5">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                placeholder="••••••••"
+              />
+              {password && confirmPassword && password !== confirmPassword && (
+                <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+              )}
+            </div>
+          )}
 
           <button
             type="submit"
@@ -92,17 +173,61 @@ export function Auth() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError(null);
-            }}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-          >
-            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-          </button>
+        <div className="mt-6 space-y-3">
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+                setConfirmPassword('');
+              }}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              {isSignUp ? (
+              <>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(false);
+                    setError(null);
+                    setConfirmPassword('');
+                  }}
+                  className="text-blue-600 hover:text-blue-700 font-semibold underline"
+                >
+                  Sign in
+                </button>
+              </>
+            ) : (
+              <>
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSignUp(true);
+                    setError(null);
+                    setConfirmPassword('');
+                  }}
+                  className="text-blue-600 hover:text-blue-700 font-semibold underline"
+                >
+                  Sign up
+                </button>
+              </>
+            )}
+            </button>
+          </div>
+          {!isSignUp && (
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-sm text-gray-600 hover:text-gray-700 font-medium"
+              >
+                Forgot your password?
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
