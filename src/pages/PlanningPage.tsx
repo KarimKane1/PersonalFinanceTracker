@@ -25,22 +25,22 @@ export function PlanningPage({
   return (
     <div className="space-y-6">
       {/* Available Funds Summary */}
-      <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <span className="text-sm font-medium text-blue-100">Available After Expenses</span>
+      <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-lg">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-2">
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-medium text-blue-100 block">Available After Expenses</span>
             <p className="text-xs text-blue-200 mt-1">Amount you can allocate to different accounts</p>
           </div>
-          <span className="text-3xl font-bold">{formatCurrency(availablePostExpenses)}</span>
+          <span className="text-2xl sm:text-3xl font-bold whitespace-nowrap">{formatCurrency(availablePostExpenses)}</span>
         </div>
       </div>
 
       {/* Info Box */}
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <span className="text-xl">ℹ️</span>
-          <div className="flex-1">
-            <p className="text-sm text-gray-700">
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 sm:p-4">
+        <div className="flex items-start gap-2 sm:gap-3">
+          <span className="text-lg sm:text-xl flex-shrink-0">ℹ️</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs sm:text-sm text-gray-700">
               <strong>Note:</strong> Any money that isn't allocated to specific accounts will automatically go to your <strong>Checking</strong> account. Make sure you have a Checking account set up in the Accounts page.
             </p>
           </div>
@@ -91,7 +91,7 @@ export function PlanningPage({
                         </div>
                       )}
                     </div>
-                    <div className="w-36 flex-shrink-0">
+                    <div className="w-full sm:w-36 flex-shrink-0">
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
                         <input
@@ -110,20 +110,20 @@ export function PlanningPage({
             </div>
 
             {/* Total Allocations */}
-            <div className="flex items-center justify-between px-4 py-4 bg-gradient-to-r from-yellow-50 to-white border-2 border-yellow-200 rounded-xl mb-4">
-              <span className="text-base font-semibold text-gray-700">Total Allocations</span>
-              <span className="text-2xl font-bold text-gray-900">{formatCurrency(totalAllocations)}</span>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-4 py-3 sm:py-4 bg-gradient-to-r from-yellow-50 to-white border-2 border-yellow-200 rounded-xl mb-4">
+              <span className="text-sm sm:text-base font-semibold text-gray-700">Total Allocations</span>
+              <span className="text-xl sm:text-2xl font-bold text-gray-900">{formatCurrency(totalAllocations)}</span>
             </div>
 
             {/* Remaining/Over-allocated */}
-            <div className={`pt-4 border-t-2 border-gray-200 rounded-xl p-4 ${
+            <div className={`pt-4 border-t-2 border-gray-200 rounded-xl p-3 sm:p-4 ${
               allocationSurplusDeficit >= 0 ? 'bg-green-50/50' : 'bg-red-50/50'
             }`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold text-gray-700">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mb-2">
+                <span className="text-xs sm:text-sm font-semibold text-gray-700">
                   {allocationSurplusDeficit >= 0 ? 'Remaining (goes to Checking)' : 'Over-allocated'}
                 </span>
-                <span className={`text-2xl font-bold ${
+                <span className={`text-xl sm:text-2xl font-bold ${
                   allocationSurplusDeficit >= 0 ? 'text-green-600' : 'text-red-600'
                 }`}>
                   {formatCurrency(allocationSurplusDeficit)}

@@ -43,9 +43,9 @@ export function AccountsPage({
         )}
 
         {/* Total Net Worth */}
-        <div className="flex items-center justify-between px-4 py-4 bg-gradient-to-r from-purple-50 to-white border-2 border-purple-200 rounded-xl">
-          <span className="text-base font-semibold text-gray-700">Starting Net Worth</span>
-          <span className="text-2xl font-bold text-gray-900">{formatCurrency(startingNetWorth)}</span>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-4 py-3 sm:py-4 bg-gradient-to-r from-purple-50 to-white border-2 border-purple-200 rounded-xl">
+          <span className="text-sm sm:text-base font-semibold text-gray-700">Starting Net Worth</span>
+          <span className="text-xl sm:text-2xl font-bold text-gray-900">{formatCurrency(startingNetWorth)}</span>
         </div>
 
         {/* Add Button */}

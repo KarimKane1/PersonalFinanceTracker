@@ -24,9 +24,11 @@ To enable email confirmation links to work properly, you need to configure the r
    - Make sure **Enable email confirmations** is checked
    - This ensures users must verify their email before they can sign in
 
-4. **Configure Email Templates (Optional)**
+4. **Configure Email Templates (Recommended)**
    - Go to **Authentication** → **Email Templates**
-   - You can customize the confirmation email template
+   - Select **"Confirm signup"** template
+   - Replace with the custom template from `SUPABASE_EMAIL_TEMPLATE.md`
+   - This provides clear instructions and branding for Personal Finance Tracker
    - The confirmation link will automatically use the redirect URL you configured
 
 ## How It Works

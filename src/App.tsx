@@ -21,6 +21,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [model, setModel] = useState<FinanceModel>(storage.getEmptyModel());
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Check for existing session on mount and handle email confirmation
   useEffect(() => {
@@ -295,22 +296,35 @@ function App() {
         onPageChange={setCurrentPage}
         currentProfileName={user.email || user.name || 'User'}
         onLogout={handleLogout}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
       />
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-6xl mx-auto p-8">
+      <div className="flex-1 overflow-auto w-full lg:w-auto">
+        <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8">
           {/* Header */}
-          <header className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-1">Personal Finance Planner</h1>
-                <p className="text-sm text-gray-500">Manage your finances with ease</p>
+          <header className="mb-6 lg:mb-8">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <button
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    className="lg:hidden p-2 rounded-lg bg-white shadow-sm hover:bg-gray-50 transition-colors"
+                    aria-label="Toggle menu"
+                  >
+                    <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Personal Finance Planner</h1>
+                </div>
+                <p className="text-xs sm:text-sm text-gray-500 ml-11 lg:ml-0">Manage your finances with ease</p>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-gray-500 bg-white px-3 py-1.5 rounded-lg shadow-sm">💾 {formatLastSaved()}</span>
+              <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 flex-shrink-0">
+                <span className="text-xs text-gray-500 bg-white px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg shadow-sm whitespace-nowrap">💾 {formatLastSaved()}</span>
                 {(import.meta as any).env?.DEV && (
-                  <span className="text-xs text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg shadow-sm">🔧 Dev Mode (localStorage)</span>
+                  <span className="text-xs text-orange-600 bg-orange-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg shadow-sm whitespace-nowrap">🔧 Dev Mode</span>
                 )}
               </div>
             </div>

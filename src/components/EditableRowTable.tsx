@@ -85,7 +85,7 @@ export function EditableRowTable({
           {rows.map((row) => (
             <div
               key={row.id}
-              className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-sm transition-all"
+              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 p-3 bg-white border border-gray-200 rounded-xl hover:border-blue-300 hover:shadow-sm transition-all"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex-1 min-w-0">
@@ -134,9 +134,9 @@ export function EditableRowTable({
       )}
 
       {/* Total Row */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-xl mt-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-200 rounded-xl mt-3">
         <span className="text-sm font-semibold text-gray-700">{totalLabel}</span>
-        <span className="text-lg font-bold text-gray-900">{formatCurrency(totalAmount)}</span>
+        <span className="text-base sm:text-lg font-bold text-gray-900">{formatCurrency(totalAmount)}</span>
       </div>
 
       {/* Add Button */}

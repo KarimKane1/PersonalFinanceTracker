@@ -23,14 +23,14 @@ export function SectionCard({ title, icon, children, color = 'blue' }: SectionCa
   };
 
   return (
-    <div className={`bg-white rounded-2xl border-2 ${colorClasses[color]} p-6 shadow-sm hover:shadow-md transition-shadow`}>
-      <div className="flex items-center gap-3 mb-4">
+    <div className={`bg-white rounded-xl sm:rounded-2xl border-2 ${colorClasses[color]} p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow`}>
+      <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
         {icon && (
-          <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
+          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white shadow-sm flex items-center justify-center flex-shrink-0">
             {icon}
           </div>
         )}
-        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-gray-900">{title}</h2>
       </div>
       {children}
     </div>
