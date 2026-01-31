@@ -5,19 +5,14 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
 
-// In production, if Supabase credentials are missing, create a dummy client
+// In production, if Supabase credentials are missing, use placeholder values
 // This prevents the app from crashing, but Supabase features won't work
-let supabaseClient;
+const finalUrl = supabaseUrl || 'https://cfjlyjozmkvrdnxkyark.supabase.co';
+const finalKey = supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmamx5am96bWt2cmRueGt5YXJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk4NjIzNjAsImV4cCI6MjA4NTQzODM2MH0.LW-LVX8LNmYWfhJdPHi3akWZ9c2LwI20GE18-IPvdF0';
+
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase URL and Anon Key must be set in environment variables');
-  // Create a dummy client with placeholder values to prevent crashes
-  supabaseClient = createClient(
-    'https://placeholder.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0'
-  );
-} else {
-  supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+  console.warn('Supabase URL and Anon Key not found in environment variables, using fallback values');
 }
 
-export const supabase = supabaseClient;
+export const supabase = createClient(finalUrl, finalKey);
 
