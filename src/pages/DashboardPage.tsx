@@ -48,14 +48,14 @@ export function DashboardPage({
   const simpleProjections = useMemo(() => {
     const projections = [];
     
-    // Initialize account and debt balances
+    // Initialize account and debt balances (with null checks)
     const accountBalances: { [key: string]: number } = {};
-    model.balanceItems.forEach(account => {
+    (model.balanceItems || []).forEach(account => {
       accountBalances[account.id] = account.amount;
     });
     
     const debtBalances: { [key: string]: number } = {};
-    model.debtItems.forEach(debt => {
+    (model.debtItems || []).forEach(debt => {
       debtBalances[debt.id] = debt.currentBalance;
     });
     
@@ -68,7 +68,7 @@ export function DashboardPage({
       // Handle monthly cash flow (income - expenses)
       if (monthlyCashFlow >= 0) {
         // Positive cash flow: add to Checking account
-        const checkingAccount = model.balanceItems.find(acc => 
+        const checkingAccount = (model.balanceItems || []).find(acc => 
           acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
         );
         if (checkingAccount) {
@@ -77,7 +77,7 @@ export function DashboardPage({
       } else {
         // Negative cash flow: cover from accounts (starting with Checking)
         let remainingShortfall = Math.abs(monthlyCashFlow);
-        const checkingAccount = model.balanceItems.find(acc => 
+        const checkingAccount = (model.balanceItems || []).find(acc => 
           acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
         );
         
@@ -89,7 +89,7 @@ export function DashboardPage({
         
         // If still short, cover from other accounts
         if (remainingShortfall > 0) {
-          for (const account of model.balanceItems) {
+          for (const account of (model.balanceItems || [])) {
             if (remainingShortfall <= 0) break;
             if (account.id === checkingAccount?.id) continue;
             
@@ -102,8 +102,8 @@ export function DashboardPage({
         }
         
         // If still short after using all savings, it increases debt
-        if (remainingShortfall > 0 && model.debtItems.length > 0) {
-          const firstDebt = model.debtItems[0];
+        if (remainingShortfall > 0 && (model.debtItems || []).length > 0) {
+          const firstDebt = (model.debtItems || [])[0];
           debtBalances[firstDebt.id] += remainingShortfall;
         }
       }
@@ -117,7 +117,7 @@ export function DashboardPage({
         acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
       );
       
-      model.debtItems.forEach(debt => {
+      (model.debtItems || []).forEach(debt => {
         // Skip if debt is already paid off
         if (debtBalances[debt.id] <= 0) {
           return;
@@ -147,7 +147,7 @@ export function DashboardPage({
           
           // If still need to deduct, take from other accounts
           if (remainingPayment > 0) {
-            for (const account of model.balanceItems) {
+            for (const account of (model.balanceItems || [])) {
               if (remainingPayment <= 0) break;
               if (account.id === checkingAccount?.id) continue;
               
@@ -170,7 +170,7 @@ export function DashboardPage({
       });
       
       // Handle payments allocated to debts that are already paid off - redirect to Checking
-      model.debtItems.forEach(debt => {
+      (model.debtItems || []).forEach(debt => {
         if (debtBalances[debt.id] <= 0) {
           const paymentAmount = debt.monthlyAllocation || 0;
           if (paymentAmount > 0 && availableMoney >= paymentAmount) {
@@ -184,7 +184,7 @@ export function DashboardPage({
       });
       
       // Process account allocations with remaining available money
-      model.balanceItems.forEach(account => {
+      (model.balanceItems || []).forEach(account => {
         const requestedAllocation = account.monthlyAllocation || 0;
         // Only allocate if there's enough money for this specific allocation
         const actualAllocation = availableMoney >= requestedAllocation ? requestedAllocation : 0;
@@ -233,12 +233,12 @@ export function DashboardPage({
 
     // Calculate starting balances per account and debt
     const accountBalances: { [key: string]: number } = {};
-    model.balanceItems.forEach(account => {
+    (model.balanceItems || []).forEach(account => {
       accountBalances[account.id] = account.amount;
     });
     
     const debtBalances: { [key: string]: number } = {};
-    model.debtItems.forEach(debt => {
+    (model.debtItems || []).forEach(debt => {
       debtBalances[debt.id] = debt.currentBalance;
     });
 
@@ -255,7 +255,7 @@ export function DashboardPage({
       // Handle monthly cash flow (income - expenses)
       if (monthlyCashFlow >= 0) {
         // Positive cash flow: add to Checking account
-        const checkingAccount = model.balanceItems.find(acc => 
+        const checkingAccount = (model.balanceItems || []).find(acc => 
           acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
         );
         if (checkingAccount) {
@@ -264,7 +264,7 @@ export function DashboardPage({
       } else {
         // Negative cash flow: cover from accounts (starting with Checking)
         let remainingShortfall = Math.abs(monthlyCashFlow);
-        const checkingAccount = model.balanceItems.find(acc => 
+        const checkingAccount = (model.balanceItems || []).find(acc => 
           acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
         );
         
@@ -276,7 +276,7 @@ export function DashboardPage({
         
         // If still short, cover from other accounts
         if (remainingShortfall > 0) {
-          for (const account of model.balanceItems) {
+          for (const account of (model.balanceItems || [])) {
             if (remainingShortfall <= 0) break;
             if (account.id === checkingAccount?.id) continue;
             
@@ -289,8 +289,8 @@ export function DashboardPage({
         }
         
         // If still short after using all savings, it increases debt
-        if (remainingShortfall > 0 && model.debtItems.length > 0) {
-          const firstDebt = model.debtItems[0];
+        if (remainingShortfall > 0 && (model.debtItems || []).length > 0) {
+          const firstDebt = (model.debtItems || [])[0];
           debtBalances[firstDebt.id] += remainingShortfall;
         }
       }
@@ -304,7 +304,7 @@ export function DashboardPage({
         acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
       );
       
-      model.debtItems.forEach(debt => {
+      (model.debtItems || []).forEach(debt => {
         // Skip if debt is already paid off
         if (debtBalances[debt.id] <= 0) {
           // Store debt data (balance is 0)
@@ -344,7 +344,7 @@ export function DashboardPage({
           
           // If still need to deduct, take from other accounts
           if (remainingPayment > 0) {
-            for (const account of model.balanceItems) {
+            for (const account of (model.balanceItems || [])) {
               if (remainingPayment <= 0) break;
               if (account.id === checkingAccount?.id) continue;
               
@@ -378,7 +378,7 @@ export function DashboardPage({
       });
       
       // Handle payments allocated to debts that are already paid off - redirect to Checking
-      model.debtItems.forEach(debt => {
+      (model.debtItems || []).forEach(debt => {
         if (debtBalances[debt.id] <= 0) {
           const paymentAmount = debt.monthlyAllocation || 0;
           if (paymentAmount > 0 && availableMoney >= paymentAmount) {
@@ -393,7 +393,7 @@ export function DashboardPage({
 
       // Calculate each account's contribution
       let totalAccountInterest = 0;
-      model.balanceItems.forEach(account => {
+      (model.balanceItems || []).forEach(account => {
         const requestedAllocation = account.monthlyAllocation || 0;
         // Only allocate if there's enough money for this specific allocation
         const actualAllocation = availableMoney >= requestedAllocation ? requestedAllocation : 0;
@@ -434,7 +434,7 @@ export function DashboardPage({
 
   // Expense breakdown data
   const expenseData = useMemo(() => {
-    return model.expenseItems
+    return (model.expenseItems || [])
       .filter(item => item.monthlyAmount > 0)
       .map(item => ({
         name: item.name,
@@ -448,7 +448,7 @@ export function DashboardPage({
     const salaryNet = computeNetMonthly(model.salaryConfig);
     const data = [
       { name: 'Salary', value: salaryNet },
-      ...model.incomeItems.map(item => ({
+      ...(model.incomeItems || []).map(item => ({
         name: item.name,
         value: item.monthlyAmount,
       })),
@@ -461,11 +461,11 @@ export function DashboardPage({
 
   // Account allocation breakdown (include Checking if there's unallocated surplus)
   const allocationData = useMemo(() => {
-    const checkingAccount = model.balanceItems.find(acc => 
+    const checkingAccount = (model.balanceItems || []).find(acc => 
       acc.name.toLowerCase() === 'checking' || acc.id === 'default-checking'
     );
     
-    const allocations = model.balanceItems
+    const allocations = (model.balanceItems || [])
       .filter(account => {
         // Include if they have an explicit allocation OR if it's Checking with surplus
         const hasAllocation = (account.monthlyAllocation || 0) > 0;
@@ -493,7 +493,7 @@ export function DashboardPage({
 
   // Debt information with payoff calculations
   const debtInfo = useMemo(() => {
-    return model.debtItems.map(debt => {
+    return (model.debtItems || []).map(debt => {
       const monthlyPayment = debt.monthlyAllocation || 0;
       const monthlyInterest = debt.currentBalance * debt.interestRate / 12;
       const principalPayment = Math.max(0, monthlyPayment - monthlyInterest);
@@ -564,7 +564,7 @@ export function DashboardPage({
 
   // Account balances breakdown
   const accountBalanceData = useMemo(() => {
-    return model.balanceItems
+    return (model.balanceItems || [])
       .filter(account => account.amount > 0)
       .map(account => ({
         name: account.name,
@@ -696,7 +696,7 @@ export function DashboardPage({
             <ResponsiveContainer width="100%" height={400}>
               <AreaChart data={monthlyProjections}>
                 <defs>
-                  {model.balanceItems.map((account, index) => (
+                  {(model.balanceItems || []).map((account, index) => (
                     <linearGradient key={account.id} id={`color${account.id}`} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.8}/>
                       <stop offset="95%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.1}/>
@@ -723,7 +723,7 @@ export function DashboardPage({
                   wrapperStyle={{ paddingTop: '20px' }}
                   formatter={(value) => {
                     // Extract account name from the data key
-                    const account = model.balanceItems.find(acc => `${acc.name}_balance` === value);
+                    const account = (model.balanceItems || []).find(acc => `${acc.name}_balance` === value);
                     return account ? account.name : value.replace('_balance', '');
                   }}
                 />

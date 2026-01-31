@@ -118,7 +118,12 @@ function App() {
   const loadUserData = async (userId: string) => {
     const loaded = await storage.loadModel(userId);
     if (loaded) {
-      // Ensure Checking account exists (migration for existing users)
+      // Ensure arrays exist and Checking account exists (migration for existing users)
+      if (!loaded.balanceItems) loaded.balanceItems = [];
+      if (!loaded.debtItems) loaded.debtItems = [];
+      if (!loaded.incomeItems) loaded.incomeItems = [];
+      if (!loaded.expenseItems) loaded.expenseItems = [];
+      
       const hasChecking = loaded.balanceItems.some(item => 
         item.name.toLowerCase() === 'checking' || item.id === 'default-checking'
       );
@@ -171,24 +176,24 @@ function App() {
   }, []);
 
   const totalMonthlyIncome = computeNetMonthly(model.salaryConfig) +
-    model.incomeItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
+    (model.incomeItems || []).reduce((sum, item) => sum + item.monthlyAmount, 0);
 
-  const totalExpenses = model.expenseItems.reduce((sum, item) => sum + item.monthlyAmount, 0);
-  const totalMinimumDebtPayments = model.debtItems.reduce((sum, item) => sum + item.minimumPayment, 0);
+  const totalExpenses = (model.expenseItems || []).reduce((sum, item) => sum + item.monthlyAmount, 0);
+  const totalMinimumDebtPayments = (model.debtItems || []).reduce((sum, item) => sum + item.minimumPayment, 0);
 
   // Available funds after expenses (debts are allocated by user, not automatically deducted)
   const availablePostExpenses = totalMonthlyIncome - totalExpenses;
 
   // Calculate total allocations from accounts and debts
-  const totalAccountAllocations = model.balanceItems.reduce((sum, item) => sum + (item.monthlyAllocation || 0), 0);
-  const totalDebtAllocations = model.debtItems.reduce((sum, item) => sum + (item.monthlyAllocation || 0), 0);
+  const totalAccountAllocations = (model.balanceItems || []).reduce((sum, item) => sum + (item.monthlyAllocation || 0), 0);
+  const totalDebtAllocations = (model.debtItems || []).reduce((sum, item) => sum + (item.monthlyAllocation || 0), 0);
   const totalAllocations = totalAccountAllocations + totalDebtAllocations;
 
   const allocationSurplusDeficit = availablePostExpenses - totalAllocations;
 
   // Calculate net worth: assets (balanceItems) minus debts (debtItems)
-  const totalAssets = model.balanceItems.reduce((sum, item) => sum + item.amount, 0);
-  const totalDebts = model.debtItems.reduce((sum, item) => sum + item.currentBalance, 0);
+  const totalAssets = (model.balanceItems || []).reduce((sum, item) => sum + item.amount, 0);
+  const totalDebts = (model.debtItems || []).reduce((sum, item) => sum + item.currentBalance, 0);
   const startingNetWorth = totalAssets - totalDebts;
 
   // Update handlers
